@@ -9,19 +9,32 @@ def home():
 
 @app.route("/analizar", methods=["POST"])
 def analizar():
-    file = request.files["file"]
+    try:
+        # Verificar si viene archivo
+        if 'file' not in request.files:
+            return jsonify({"error": "No se encontró el archivo"}), 400
 
-    texto = ""
-    with pdfplumber.open(file) as pdf:
-        for pagina in pdf.pages:
-            texto += pagina.extract_text() or ""
+        file = request.files['file']
 
-    return jsonify({
-        "resultado": texto[:1000]  # solo muestra parte
-    })
+        if file.filename == '':
+            return jsonify({"error": "Archivo vacío"}), 400
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+        texto = ""
+
+        with pdfplumber.open(file) as pdf:
+            for pagina in pdf.pages:
+                texto += pagina.extract_text() or ""
+
+        return jsonify({
+            "mensaje": "PDF procesado correctamente",
+            "preview": texto[:500]
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
