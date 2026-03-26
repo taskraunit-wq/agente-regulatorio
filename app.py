@@ -1,42 +1,41 @@
 from flask import Flask, request, jsonify
-import pdfplumber
+import os
+from openai import OpenAI
+import PyPDF2
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Agente regulatorio activo 🚀"
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route("/analizar", methods=["POST"])
 def analizar():
-    print("HEADERS:", request.headers)
-    print("FILES:", request.files)
-
     if 'file' not in request.files:
-        return jsonify({
-            "error": "No se recibió archivo",
-            "debug_files": str(request.files)
-        }), 400
+        return jsonify({"error": "No se recibió archivo"}), 400
 
     file = request.files['file']
 
-    texto = ""
+    # Leer PDF
+    reader = PyPDF2.PdfReader(file)
+    text = ""
 
-    try:
-        with pdfplumber.open(file) as pdf:
-            for pagina in pdf.pages:
-                texto += pagina.extract_text() or ""
+    for page in reader.pages:
+        text += page.extract_text() + "\n"
 
-        return jsonify({
-            "mensaje": "OK",
-            "preview": texto[:500]
-        })
+    # 🔥 AQUÍ entra la IA
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Eres un experto en regulación sanitaria y etiquetado."},
+            {"role": "user", "content": f"Analiza este documento y detecta riesgos regulatorios:\n{text[:3000]}"}
+        ]
+    )
 
-    except Exception as e:
-        return jsonify({
-            "error": str(e)
-        }), 500
+    resultado = response.choices[0].message.content
 
+    return jsonify({
+        "mensaje": "OK",
+        "analisis": resultado
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
