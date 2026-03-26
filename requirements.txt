@@ -2,3 +2,4 @@ flask
 anthropic
 pdfplumber
 openai
+PyPDF2
